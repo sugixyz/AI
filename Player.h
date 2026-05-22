@@ -15,8 +15,5 @@ private:
 	int hImage_;//‰æ‘œID
 	Point pos_;
 	DIR dir_;//ˆÚ“®•ûŒü
-private:
-	//Œü‚¢‚Ä‚¢‚é•ûŒü‚Ìæ‚É•Ç‚ª‚ ‚é‚©‚Ç‚¤‚©
-	bool IsStageDir();
 };
 

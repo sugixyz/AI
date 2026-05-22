@@ -35,7 +35,7 @@ void Enemy::Update()
 	prog_timer = prog_timer - dt;
 	if (dir_timer < 0.0f)
 	{
-		dir_ = (DIR)(GetRand(3));
+		//dir_ = (DIR)(GetRand(3));
 		dir_timer = 3.0f + dir_timer;
 	}
 
@@ -60,9 +60,28 @@ void Enemy::Update()
 			break;
 		}
 		//移動先がステージの外に出ないようにする
-		if (stageData[newPos.y / CHA_SIZE][newPos.x / CHA_SIZE] == 0)
+		if (stageData[newPos.y / CHA_SIZE][newPos.x / CHA_SIZE] != 1)
 		{
 			pos_ = newPos;
+		}
+		else
+		{
+			if (dir_ == DIR::UP)
+			{
+				dir_ = DIR::RIGHT;
+			}
+			else if (dir_ == DIR::DOWN)
+			{
+				dir_ = DIR::LEFT;
+			}
+			else if (dir_ == DIR::RIGHT)
+			{
+				dir_ = DIR::DOWN;
+			}
+			else if(dir_ == DIR::LEFT)
+			{
+				dir_ = DIR::UP;
+			}
 		}
 		prog_timer = 0.5f + prog_timer;
 	}

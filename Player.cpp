@@ -27,29 +27,31 @@ Player::~Player()
 
 void Player::Update()
 {
+	Point newPos = pos_;
 	if (Input::IsKeyDown(KEY_INPUT_UP))
 	{
 		dir_ = UP;
-		if(IsStageDir())return;
-		pos_.y -= PLAYER_DRAW_SIZE;
+		newPos.y -= PLAYER_DRAW_SIZE;
 	}
 	else if (Input::IsKeyDown(KEY_INPUT_DOWN))
 	{
 		dir_ = DOWN;
-		if (IsStageDir())return;
-		pos_.y += PLAYER_DRAW_SIZE;
+		newPos.y += PLAYER_DRAW_SIZE;
 	}
 	else if (Input::IsKeyDown(KEY_INPUT_LEFT))
 	{
 		dir_ = LEFT;
-		if (IsStageDir())return;
-		pos_.x -= PLAYER_DRAW_SIZE;
+		newPos.x -= PLAYER_DRAW_SIZE;
 	}
 	else if (Input::IsKeyDown(KEY_INPUT_RIGHT))
 	{
 		dir_ = RIGHT;
-		if (IsStageDir())return;
-		pos_.x += PLAYER_DRAW_SIZE;
+		newPos.x += PLAYER_DRAW_SIZE;
+	}
+
+	if (stageData[newPos.y / CHA_SIZE][newPos.x / CHA_SIZE] != 1)
+	{
+		pos_ = newPos;
 	}
 }
 
@@ -76,35 +78,4 @@ void Player::Draw()
 		animTimer = ANIM_INTERVAL + animTimer;
 	}
 	animTimer = animTimer - Time::DeltaTime();
-}
-
-bool Player::IsStageDir()
-{
-	Point dir;
-	dir.x = pos_.x / CHA_SIZE;
-	dir.y = pos_.y / CHA_SIZE;
-
-	switch (dir_)
-	{
-	case UP:
-		dir.y -= 1;
-		break;
-	case DOWN:
-		dir.y += 1;
-		break;
-	case RIGHT:
-		dir.x += 1;
-		break;
-	case LEFT:
-		dir.x -= 1;
-		break;
-	default:
-		break;
-	}
-
-	if (stageData[dir.y][dir.x] == 1)
-	{
-		return true;
-	}
-	return false;
 }
