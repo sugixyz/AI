@@ -52,6 +52,8 @@ void Player::Update()
 	if (stageData[newPos.y / CHA_SIZE][newPos.x / CHA_SIZE] != 1)
 	{
 		pos_ = newPos;
+		//CSV‚É“o˜^
+		stageData[newPos.y / CHA_SIZE][newPos.x / CHA_SIZE] = 2;
 	}
 }
 

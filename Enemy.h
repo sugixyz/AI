@@ -14,5 +14,16 @@ public:
 	~Enemy();
 	void Update() override;
 	void Draw() override;
+private:
+	//’ÇÕ’†‚©‚Ç‚¤‚©
+	bool isChase = false;
+	//‹——£
+	Point dist;
+private:
+	//ƒvƒŒƒCƒ„[‚Æ‚Ì‹——£‚ğ‘ª’è
+	bool CheckLenght();
+	//’ÇÕ
+	void Chase();
+	void Move();
 };
 
