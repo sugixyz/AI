@@ -19,11 +19,18 @@ private:
 	bool isChase = false;
 	//距離
 	Point dist;
+	//プレイヤーが見えるかどうか
+	bool isVisibility = false;
 private:
-	//プレイヤーとの距離を測定
-	bool CheckLenght();
 	//追跡
 	void Chase();
 	void Move();
+	//視界内に入っているかどうか
+	bool CheckVisibility();
+
+	Pointf VectorNormalize(const Point& p);
+
+	Point GetDir();
+	void ToPlayerDir(Point toPlayer);
 };
 

@@ -1,6 +1,7 @@
 #include "Enemy.h"
 #include"Player.h"
 #include "time.h"
+#include<cmath>
 
 namespace
 {
@@ -12,6 +13,7 @@ namespace
 	const float ANIM_INTERVAL = 0.2f;
 
 	const int DIST = 15;
+	const float PAI = 3.141592653589793;
 }
 
 
@@ -47,6 +49,7 @@ void Enemy::Draw()
 	static int frame = 0;
 	int nowFrame = animFrame[frame];
 
+
 	Rect iRect[4] = {
 		{  nowFrame * ENEMY_SIZE, 3 * ENEMY_SIZE, ENEMY_SIZE, ENEMY_SIZE},
 		{  nowFrame * ENEMY_SIZE, 0 * ENEMY_SIZE, ENEMY_SIZE, ENEMY_SIZE},
@@ -62,21 +65,6 @@ void Enemy::Draw()
 		animTimer = ANIM_INTERVAL + animTimer;
 	}
 	animTimer = animTimer - Time::DeltaTime();
-}
-
-bool Enemy::CheckLenght()
-{
-	Player* p = FindGameObject<Player>();
-	Point pPos = p->GetPlayerPos();
-
-	//マンハッタン距離で測定
-	dist = { (pPos.x - pos_.x) / CHA_SIZE,(pPos.y - pos_.y) / CHA_SIZE };
-	int distBlock = abs(dist.x) + abs(dist.y);
-	if (distBlock <= DIST)
-	{
-		return true;
-	}
-	return false;
 }
 
 void Enemy::Chase()
@@ -97,7 +85,7 @@ void Enemy::Move()
 {
 	Point newPos = pos_;
 
-	isChase = CheckLenght();
+	isChase = CheckVisibility();
 	if (isChase)Chase();
 	switch (dir_)
 	{
@@ -144,3 +132,74 @@ void Enemy::Move()
 		}
 	}
 }
+
+bool Enemy::CheckVisibility()
+{
+	Player* p = FindGameObject<Player>();
+	Point pPos = { p->GetPlayerPos().x + CHA_SIZE / 2,p->GetPlayerPos().y + CHA_SIZE / 2 };
+	Point toPlayer = { pPos.x - (pos_.x + CHA_SIZE / 2),pPos.y - (pos_.y + CHA_SIZE / 2) };
+	Pointf pNormal = VectorNormalize(toPlayer);
+	Pointf eNormal = VectorNormalize(GetDir());
+
+	float dot = { (float)(pNormal.x * eNormal.x + pNormal.y * eNormal.y) };
+	//マンハッタン距離で測定
+	dist = { (pPos.x - pos_.x) / CHA_SIZE,(pPos.y - pos_.y) / CHA_SIZE };
+	int distBlock = abs(dist.x) + abs(dist.y);
+	if (cos(60 * PAI / 180) <= dot)
+	{
+		if (distBlock <= DIST)return true;
+	}
+	else if (distBlock <= 1)
+	{
+		ToPlayerDir(toPlayer);
+		return true;
+	}
+	return false;
+}
+
+Pointf Enemy::VectorNormalize(const Point& p)
+{
+	float length = sqrtf(p.x * p.x + p.y * p.y);
+	return { p.x / length,p.y / length };
+}
+
+Point Enemy::GetDir()
+{
+	switch (dir_)
+	{
+	case UP:
+		return { 0,-1 };
+		break;
+	case DOWN:
+		return { 0,1 };
+		break;
+	case LEFT:
+		return { -1,0 };
+		break;
+	case RIGHT:
+		return { 1,0 };
+		break;
+	}
+	return { 0,0 };
+}
+
+void Enemy::ToPlayerDir(Point toPlayer)
+{
+	if (toPlayer.x == 1)
+	{
+		dir_ = DIR::RIGHT;
+	}
+	else if (toPlayer.x == -1)
+	{
+		dir_ = DIR::LEFT;
+	}
+	else if (toPlayer.y == 1)
+	{
+		dir_ = DIR::DOWN;
+	}
+	else if (toPlayer.y == -1)
+	{
+		dir_ = DIR::UP;
+	}
+}
+
