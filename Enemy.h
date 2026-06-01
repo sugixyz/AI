@@ -15,18 +15,22 @@ public:
 	void Update() override;
 	void Draw() override;
 private:
+	static constexpr int RADIUS = 4;
+private:
 	//’ÇÕ’†‚©‚Ç‚¤‚©
 	bool isChase = false;
 	//‹——£
 	Point dist;
 	//ƒvƒŒƒCƒ„[‚ªŒ©‚¦‚é‚©‚Ç‚¤‚©
 	bool isVisibility = false;
+	int filter[RADIUS * 2 + 1][RADIUS * 2 + 1];
 private:
 	//’ÇÕ
 	void Chase();
 	void Move();
 	//‹ŠE“à‚É“ü‚Á‚Ä‚¢‚é‚©‚Ç‚¤‚©
 	bool CheckVisibility();
+	bool CheckChase();
 
 	Pointf VectorNormalize(const Point& p);
 

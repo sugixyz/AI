@@ -23,6 +23,13 @@ Enemy::Enemy()
 	hImage_ = LoadGraph("Assets/panda_R.png");
 	pos_ = ENEMY_START_POS; //32はブロックの位置pos_
 	dir_ = INIT_ENEMY_DIR;
+	for (int y = 0;y < RADIUS * 2 + 1;y++)
+	{
+		for (int x = 0;x < RADIUS * 2 + 1;x++)
+		{
+			filter[y][x] = 1;
+		}
+	}
 }
 
 Enemy::~Enemy()
@@ -65,6 +72,20 @@ void Enemy::Draw()
 		animTimer = ANIM_INTERVAL + animTimer;
 	}
 	animTimer = animTimer - Time::DeltaTime();
+
+	SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128);
+	for (int y = 0;y < RADIUS * 2 + 1; y++)
+	{
+		for (int x = 0;x < RADIUS * 2 + 1;x++)
+		{
+			if (filter[y][x] == 1)
+			{
+				Point pos = { (x - RADIUS) * CHA_SIZE + pos_.x,(y - RADIUS ) * CHA_SIZE + pos_.y };
+				DrawBox(pos.x, pos.y, pos.x + CHA_SIZE, pos.y + CHA_SIZE, 0x00ff00,TRUE);
+			}
+		}
+	}
+	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 255);
 }
 
 void Enemy::Chase()
@@ -154,6 +175,21 @@ bool Enemy::CheckVisibility()
 		ToPlayerDir(toPlayer);
 		return true;
 	}
+	return false;
+}
+
+bool Enemy::CheckChase()
+{
+	for (int y = 0;y < RADIUS * 2 + 1;y++)
+	{
+		for (int x = 0;x < RADIUS * 2 + 1;x++)
+		{
+			Point pos = { (x - RADIUS) * CHA_SIZE ,(y - RADIUS) * CHA_SIZE };
+			Pointf dist = { pos.x - pos_.x,pos.y - pos_.x };
+			float lenght = VSize(VECTOR(dist.x, dist.y);
+		}
+	}
+
 	return false;
 }
 
