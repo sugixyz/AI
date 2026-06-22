@@ -11,9 +11,10 @@ namespace
 	const int ENEMY_DRAW_SIZE = 32; //敵の描画サイズ
 	const int animFrame[4]{ 0, 1, 2, 1 };
 	const float ANIM_INTERVAL = 0.2f;
+	const float DegToRad = DX_PI_F / 180;
 
-	const int DIST = 15;
-	const float PAI = 3.141592653589793;
+	const float CHASE_LENGHT = 48 * 8;
+	const float ATTACK_LENGHT = 48 * 1;
 }
 
 
@@ -23,13 +24,10 @@ Enemy::Enemy()
 	hImage_ = LoadGraph("Assets/panda_R.png");
 	pos_ = ENEMY_START_POS; //32はブロックの位置pos_
 	dir_ = INIT_ENEMY_DIR;
-	for (int y = 0;y < RADIUS * 2 + 1;y++)
-	{
-		for (int x = 0;x < RADIUS * 2 + 1;x++)
-		{
-			filter[y][x] = 1;
-		}
-	}
+	target = FindGameObject<Player>();
+
+	currentState = new PatrolState(this);
+	nextState = nullptr;
 }
 
 Enemy::~Enemy()
@@ -44,10 +42,13 @@ void Enemy::Update()
 
 	if (prog_timer < 0.0f)
 	{
-		Move();
+		currentState->Update();
 		prog_timer = 0.5f + prog_timer;
 	}
 
+	if (nextState == nullptr)return;
+	currentState = nextState;
+	nextState = nullptr;
 }
 
 void Enemy::Draw()
@@ -72,42 +73,18 @@ void Enemy::Draw()
 		animTimer = ANIM_INTERVAL + animTimer;
 	}
 	animTimer = animTimer - Time::DeltaTime();
-
-	SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128);
-	for (int y = 0;y < RADIUS * 2 + 1; y++)
-	{
-		for (int x = 0;x < RADIUS * 2 + 1;x++)
-		{
-			if (filter[y][x] == 1)
-			{
-				Point pos = { (x - RADIUS) * CHA_SIZE + pos_.x,(y - RADIUS ) * CHA_SIZE + pos_.y };
-				DrawBox(pos.x, pos.y, pos.x + CHA_SIZE, pos.y + CHA_SIZE, 0x00ff00,TRUE);
-			}
-		}
-	}
-	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 255);
 }
 
-void Enemy::Chase()
+void Enemy::ChangeState(StateBase* state)
 {
-	if (abs(dist.x) > abs(dist.y))
-	{
-		if (dist.x < 0)dir_ = LEFT;
-		else if (dist.x > 0)dir_ = RIGHT;
-	}
-	else if (abs(dist.x) < abs(dist.y))
-	{
-		if (dist.y < 0)dir_ = UP;
-		else if (dist.y > 0)dir_ = DOWN;
-	}
+	delete nextState;
+	nextState = state;
 }
 
 void Enemy::Move()
 {
 	Point newPos = pos_;
 
-	isChase = CheckVisibility();
-	if (isChase)Chase();
 	switch (dir_)
 	{
 	case UP:
@@ -154,88 +131,128 @@ void Enemy::Move()
 	}
 }
 
-bool Enemy::CheckVisibility()
+PatrolState::PatrolState(Enemy* enemy)
 {
-	Player* p = FindGameObject<Player>();
-	Point pPos = { p->GetPlayerPos().x + CHA_SIZE / 2,p->GetPlayerPos().y + CHA_SIZE / 2 };
-	Point toPlayer = { pPos.x - (pos_.x + CHA_SIZE / 2),pPos.y - (pos_.y + CHA_SIZE / 2) };
-	Pointf pNormal = VectorNormalize(toPlayer);
-	Pointf eNormal = VectorNormalize(GetDir());
-
-	float dot = { (float)(pNormal.x * eNormal.x + pNormal.y * eNormal.y) };
-	//マンハッタン距離で測定
-	dist = { (pPos.x - pos_.x) / CHA_SIZE,(pPos.y - pos_.y) / CHA_SIZE };
-	int distBlock = abs(dist.x) + abs(dist.y);
-	if (cos(60 * PAI / 180) <= dot)
-	{
-		if (distBlock <= DIST)return true;
-	}
-	else if (distBlock <= 1)
-	{
-		ToPlayerDir(toPlayer);
-		return true;
-	}
-	return false;
+	en = enemy;
 }
 
-bool Enemy::CheckChase()
+PatrolState::~PatrolState()
 {
-	for (int y = 0;y < RADIUS * 2 + 1;y++)
+}
+
+void PatrolState::Update()
+{
+
+	en->Move();
+
+	Player* p = en->GetTarget();
+	Point pPos = p->GetPlayerPos();
+	Pointf toPlayer = { pPos.x - en->pos_.x,pPos.y - en->pos_.y };
+	float dist = toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y;
+	if (dist > CHASE_LENGHT * CHASE_LENGHT)return;
+
+	float dot = pPos.x * en->pos_.x + pPos.y * en->pos_.y;
+	if (dot >= cos(60 * DegToRad))
 	{
-		for (int x = 0;x < RADIUS * 2 + 1;x++)
+		en->ChangeState(new ChaseState(en));
+	}
+}
+
+ChaseState::ChaseState(Enemy* enemy)
+{
+	en = enemy;
+}
+
+ChaseState::~ChaseState()
+{
+}
+
+void ChaseState::Update()
+{
+	Player* p = en->GetTarget();
+	Point pPos = p->GetPlayerPos();
+	Pointf toPlayer = { pPos.x - en->pos_.x,pPos.y - en->pos_.y };
+	float dist = toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y;
+	if (dist > CHASE_LENGHT * CHASE_LENGHT)
+	{
+		en->ChangeState(new SearchState(en,pPos));
+		return;
+	}
+	if (dist <= ATTACK_LENGHT * ATTACK_LENGHT)
+	{
+		en->ChangeState(new AttackState(en));
+		return;
+	}
+	if (abs(toPlayer.x) > abs(toPlayer.y))
+	{
+		if (toPlayer.x < 0)en->dir_ = LEFT;
+		else if (toPlayer.x > 0)en->dir_ = RIGHT;
+	}
+	else if (abs(toPlayer.x) < abs(toPlayer.y))
+	{
+		if (toPlayer.y < 0)en->dir_ = UP;
+		else if (toPlayer.y > 0)en->dir_ = DOWN;
+	}
+
+	en->Move();
+}
+
+AttackState::AttackState(Enemy* enemy)
+{
+	en = enemy;
+}
+
+AttackState::~AttackState()
+{
+}
+
+void AttackState::Update()
+{
+}
+
+SearchState::SearchState(Enemy* enemy,Point plPos)
+{
+	en = enemy;
+	targetPos = plPos;
+	state = State::SEARCH;
+}
+
+SearchState::~SearchState()
+{
+}
+
+void SearchState::Update()
+{
+	if (state == State::SEARCH)
+	{
+		Pointf toTarget = { targetPos.x - en->pos_.x,targetPos.y - en->pos_.y };
+		float dist = toTarget.x * toTarget.x + toTarget.y * toTarget.y;
+		if (abs(toTarget.x) > abs(toTarget.y))
 		{
-			Point pos = { (x - RADIUS) * CHA_SIZE ,(y - RADIUS) * CHA_SIZE };
-			Pointf dist = { pos.x - pos_.x,pos.y - pos_.x };
-			float lenght = VSize(VECTOR(dist.x, dist.y);
+			if (toTarget.x < 0)en->dir_ = LEFT;
+			else if (toTarget.x > 0)en->dir_ = RIGHT;
+		}
+		else if (abs(toTarget.x) < abs(toTarget.y))
+		{
+			if (toTarget.y < 0)en->dir_ = UP;
+			else if (toTarget.y > 0)en->dir_ = DOWN;
+		}
+
+		en->Move();
+
+		if (en->pos_.x == targetPos.x && en->pos_.y == targetPos.y)
+		{
+			state = State::GO;
 		}
 	}
-
-	return false;
-}
-
-Pointf Enemy::VectorNormalize(const Point& p)
-{
-	float length = sqrtf(p.x * p.x + p.y * p.y);
-	return { p.x / length,p.y / length };
-}
-
-Point Enemy::GetDir()
-{
-	switch (dir_)
+	else if (state == State::GO)
 	{
-	case UP:
-		return { 0,-1 };
-		break;
-	case DOWN:
-		return { 0,1 };
-		break;
-	case LEFT:
-		return { -1,0 };
-		break;
-	case RIGHT:
-		return { 1,0 };
-		break;
-	}
-	return { 0,0 };
-}
-
-void Enemy::ToPlayerDir(Point toPlayer)
-{
-	if (toPlayer.x == 1)
-	{
-		dir_ = DIR::RIGHT;
-	}
-	else if (toPlayer.x == -1)
-	{
-		dir_ = DIR::LEFT;
-	}
-	else if (toPlayer.y == 1)
-	{
-		dir_ = DIR::DOWN;
-	}
-	else if (toPlayer.y == -1)
-	{
-		dir_ = DIR::UP;
+		static float timer = 0.0f;
+		timer += Time::DeltaTime();
+		if (timer >= 1.0f)
+		{
+			en->ChangeState(new PatrolState(en));
+			timer = 0.0f;
+		}
 	}
 }
-
