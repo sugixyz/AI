@@ -68,6 +68,8 @@ public:
 	void Draw() override;
 	void ChangeState(StateBase* state);
 	Player* GetTarget() { return target; }
+	Pointf VNormal(Pointf a);
+	Pointf GetDir();
 	void Move();
 private:
 	StateBase* currentState;

@@ -81,6 +81,33 @@ void Enemy::ChangeState(StateBase* state)
 	nextState = state;
 }
 
+Pointf Enemy::VNormal(Pointf a)
+{
+	float l = sqrtf(a.x * a.x + a.y * a.y);
+	Pointf ret = { a.x / l,a.y / l };
+	return ret;
+}
+
+Pointf Enemy::GetDir()
+{
+	switch (dir_)
+	{
+	case UP:
+		return { 0.0f,-1.0f };
+		break;
+	case DOWN:
+		return{ 0.0f,1.0f };
+		break;
+	case RIGHT:
+		return { 1.0f,0.0f };
+		break;
+	case LEFT:
+		return { -1.0f,0.0f };
+		break;
+	}
+	return Pointf();
+}
+
 void Enemy::Move()
 {
 	Point newPos = pos_;
@@ -151,7 +178,9 @@ void PatrolState::Update()
 	float dist = toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y;
 	if (dist > CHASE_LENGHT * CHASE_LENGHT)return;
 
-	float dot = pPos.x * en->pos_.x + pPos.y * en->pos_.y;
+	Pointf pNormal = en->VNormal(toPlayer);
+	Pointf eNormal = en->VNormal(en->GetDir());
+	float dot = pNormal.x * eNormal.x + pNormal.y * eNormal.y;
 	if (dot >= cos(60 * DegToRad))
 	{
 		en->ChangeState(new ChaseState(en));
@@ -208,6 +237,14 @@ AttackState::~AttackState()
 
 void AttackState::Update()
 {
+	Player* p = en->GetTarget();
+	Point pPos = p->GetPlayerPos();
+	Pointf toPlayer = { pPos.x - en->pos_.x,pPos.y - en->pos_.y };
+	float dist = toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y;
+	if (dist > ATTACK_LENGHT * ATTACK_LENGHT)
+	{
+		en->ChangeState(new PatrolState(en));
+	}
 }
 
 SearchState::SearchState(Enemy* enemy,Point plPos)
@@ -247,12 +284,6 @@ void SearchState::Update()
 	}
 	else if (state == State::GO)
 	{
-		static float timer = 0.0f;
-		timer += Time::DeltaTime();
-		if (timer >= 1.0f)
-		{
 			en->ChangeState(new PatrolState(en));
-			timer = 0.0f;
-		}
 	}
 }
