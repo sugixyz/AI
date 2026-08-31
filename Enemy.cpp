@@ -5,7 +5,7 @@
 
 namespace
 {
-	const int ENEMY_SIZE = 48; //“G‚ÌƒTƒCƒY 32*32
+	const int ENEMY_SIZE = 48; //“G‚ÌƒTƒCƒY
 	const Point ENEMY_START_POS = { 20 * ENEMY_SIZE, 10 * ENEMY_SIZE }; //“G‚Ì‰ŠúˆÊ’u
 	const DIR INIT_ENEMY_DIR = { LEFT };
 	const int ENEMY_DRAW_SIZE = 32; //“G‚Ì•`‰æƒTƒCƒY
@@ -13,8 +13,8 @@ namespace
 	const float ANIM_INTERVAL = 0.2f;
 	const float DegToRad = DX_PI_F / 180;
 
-	const float CHASE_LENGHT = 48 * 8;
-	const float ATTACK_LENGHT = 48 * 1;
+	const float CHASE_LENGHT = ENEMY_SIZE * 8;
+	const float ATTACK_LENGHT = ENEMY_SIZE * 1;
 }
 
 
@@ -28,6 +28,7 @@ Enemy::Enemy()
 
 	currentState = new PatrolState(this);
 	nextState = nullptr;
+	currentStateType = StateType::PATROL;
 }
 
 Enemy::~Enemy()
@@ -73,12 +74,33 @@ void Enemy::Draw()
 		animTimer = ANIM_INTERVAL + animTimer;
 	}
 	animTimer = animTimer - Time::DeltaTime();
+
+	DrawStateType();
 }
 
-void Enemy::ChangeState(StateBase* state)
+void Enemy::ChangeState(StateType stateType)
 {
-	delete nextState;
-	nextState = state;
+	if (stateType == currentStateType)return;
+
+	switch (stateType)
+	{
+	case StateType::PATROL:
+		nextState = new PatrolState(this);
+		currentStateType = StateType::PATROL;
+		break;
+	case StateType::CHASE:
+		nextState = new ChaseState(this);
+		currentStateType = StateType::CHASE;
+		break;
+	case StateType::ATTACK:
+		nextState = new AttackState(this);
+		currentStateType = StateType::ATTACK;
+		break;
+	case StateType::SEARCH:
+		nextState = new SearchState(this, target->GetPlayerPos());
+		currentStateType = StateType::SEARCH;
+		break;
+	}
 }
 
 Pointf Enemy::VNormal(Pointf a)
@@ -158,6 +180,25 @@ void Enemy::Move()
 	}
 }
 
+void Enemy::DrawStateType()
+{
+	switch (currentStateType)
+	{
+	case StateType::PATROL:
+		DrawString(0, 0, "PATROL", GetColor(255, 255, 255));
+		break;
+	case StateType::CHASE:
+		DrawString(0, 0, "CHASE", GetColor(255, 255, 255));
+		break;
+	case StateType::ATTACK:
+		DrawString(0, 0, "ATTACK", GetColor(255, 255, 255));
+		break;
+	case StateType::SEARCH:
+		DrawString(0, 0, "SEARCH", GetColor(255, 255, 255));
+		break;
+	}
+}
+
 PatrolState::PatrolState(Enemy* enemy)
 {
 	en = enemy;
@@ -183,7 +224,7 @@ void PatrolState::Update()
 	float dot = pNormal.x * eNormal.x + pNormal.y * eNormal.y;
 	if (dot >= cos(60 * DegToRad))
 	{
-		en->ChangeState(new ChaseState(en));
+		en->ChangeState(StateType::CHASE);
 	}
 }
 
@@ -204,12 +245,12 @@ void ChaseState::Update()
 	float dist = toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y;
 	if (dist > CHASE_LENGHT * CHASE_LENGHT)
 	{
-		en->ChangeState(new SearchState(en,pPos));
+		en->ChangeState(StateType::SEARCH);
 		return;
 	}
 	if (dist <= ATTACK_LENGHT * ATTACK_LENGHT)
 	{
-		en->ChangeState(new AttackState(en));
+		en->ChangeState(StateType::ATTACK);
 		return;
 	}
 	if (abs(toPlayer.x) > abs(toPlayer.y))
@@ -243,7 +284,7 @@ void AttackState::Update()
 	float dist = toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y;
 	if (dist > ATTACK_LENGHT * ATTACK_LENGHT)
 	{
-		en->ChangeState(new PatrolState(en));
+		en->ChangeState(StateType::CHASE);
 	}
 }
 
@@ -284,6 +325,6 @@ void SearchState::Update()
 	}
 	else if (state == State::GO)
 	{
-			en->ChangeState(new PatrolState(en));
+		en->ChangeState(StateType::PATROL);
 	}
 }

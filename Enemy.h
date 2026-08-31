@@ -5,6 +5,14 @@
 class Enemy;
 class Player;
 
+enum class StateType
+{
+	PATROL,
+	CHASE,
+	ATTACK,
+	SEARCH
+};
+
 class StateBase
 {
 public:
@@ -46,7 +54,7 @@ public:
 	void Update() override;
 private:
 	Point targetPos;
-	enum State
+	enum class State
 	{
 		SEARCH,
 		GO
@@ -66,7 +74,7 @@ public:
 	~Enemy();
 	void Update() override;
 	void Draw() override;
-	void ChangeState(StateBase* state);
+	void ChangeState(StateType stateType);
 	Player* GetTarget() { return target; }
 	Pointf VNormal(Pointf a);
 	Pointf GetDir();
@@ -78,5 +86,9 @@ private:
 	Point pos_;//ˆÊ’u
 	DIR dir_;//ˆÚ“®•ûŒü
 	Player* target;
+
+	StateType currentStateType;
+private:
+	void DrawStateType();
 };
 

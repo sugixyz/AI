@@ -5,12 +5,11 @@
 namespace
 {
 	Point PLAYER_INIT_POS = { 2 * CHA_SIZE, 2 * CHA_SIZE }; //プレイヤーの初期位置
-	const int PLAYER_IMAGE_SIZE = 48; //プレイヤーのサイズ 32*32
+	const int PLAYER_IMAGE_SIZE = 48; //プレイヤーのサイズ
 	const int PLAYER_DRAW_SIZE = CHA_SIZE; //プレイヤーの描画サイズ
 	const DIR PLAYER_INIT_DIR = { DOWN }; //プレイヤーの初期方向
 	const int animFrame[4]{ 0, 1, 2, 1 }; //アニメーションのコマ番号
 	const float ANIM_INTERVAL = 0.2f; //アニメーションの1コマのインターバル
-
 }
 
 
