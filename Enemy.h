@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 #include ".\Library\GameObject.h"
 #include "global.h"
+#include"Library/BehaviorTree.h"
 
-class Enemy;
 class Player;
 
 enum class StateType
@@ -13,82 +13,48 @@ enum class StateType
 	SEARCH
 };
 
-class StateBase
-{
-public:
-	virtual ~StateBase() = default;
-	virtual void Update() = 0;
-protected:
-	Enemy* en;
-};
-
-class PatrolState : public StateBase
-{
-public:
-	PatrolState(Enemy* enemy);
-	~PatrolState() override;
-	void Update() override;
-};
-
-class ChaseState : public StateBase
-{
-public:
-	ChaseState(Enemy* enemy);
-	~ChaseState() override;
-	void Update() override;
-};
-
-class AttackState : public StateBase
-{
-public:
-	AttackState(Enemy* enemy);
-	~AttackState() override;
-	void Update() override;
-};
-
-class SearchState : public StateBase
-{
-public:
-	SearchState(Enemy* enemy, Point plPos);
-	~SearchState() override;
-	void Update() override;
-private:
-	Point targetPos;
-	enum class State
-	{
-		SEARCH,
-		GO
-	};
-	State state;
-};
-
-
 class Enemy : public GameObject
 {
-	friend class PatrolState;
-	friend class ChaseState;
-	friend class AttackState;
-	friend class SearchState;
 public:
 	Enemy();
 	~Enemy();
 	void Update() override;
 	void Draw() override;
-	void ChangeState(StateType stateType);
 	Player* GetTarget() { return target; }
 	Pointf VNormal(Pointf a);
 	Pointf GetDir();
 	void Move();
+public:
+	NodeResult Attack();
+	bool CanAttack();
+	NodeResult Chase();
+	bool CanChase();;
+	NodeResult Search();
+	bool CanSearch();
+	NodeResult Patrol();
 private:
-	StateBase* currentState;
-	StateBase* nextState;
-	int hImage_;//�摜ID
-	Point pos_;//�ʒu
-	DIR dir_;//�ړ�����
+	int hImage_;//画像ID
+	Point pos_;//位置
+	DIR dir_;//移動方向
 	Player* target;
 
 	StateType currentStateType;
+
+	Selector root;
+	//索敵中かどうか
+	bool isSearching;
+	//索敵の経過時間
+	float searchTimer;
+	//目的地に到着しているかどうか
+	bool isAtDestination;
+	//目的地
+	Point destination;
+	//プレイヤーとの距離
+	float distanceToPlayer;
 private:
 	void DrawStateType();
+	float CalculateDistance(Pointf vec);
+	Pointf CalculateToPlayerVec();
+	void Initialize();
+	void SetBehavior();
 };
-

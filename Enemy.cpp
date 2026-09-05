@@ -1,34 +1,31 @@
-#include "Enemy.h"
+Ôªø#include "Enemy.h"
 #include"Player.h"
 #include "time.h"
 #include<cmath>
 
 namespace
 {
-	const int ENEMY_SIZE = 48; //ìGÇÃÉTÉCÉY
-	const Point ENEMY_START_POS = { 20 * ENEMY_SIZE, 10 * ENEMY_SIZE }; //ìGÇÃèâä˙à íu
+	const int ENEMY_SIZE = 48; //Êïµ„ÅÆ„Çµ„Ç§„Ç∫
+	const Point ENEMY_START_POS = { 20 * ENEMY_SIZE, 10 * ENEMY_SIZE }; //Êïµ„ÅÆÂàùÊúü‰ΩçÁΩÆ
 	const DIR INIT_ENEMY_DIR = { LEFT };
-	const int ENEMY_DRAW_SIZE = 32; //ìGÇÃï`âÊÉTÉCÉY
+	const int ENEMY_DRAW_SIZE = 32; //Êïµ„ÅÆÊèèÁîª„Çµ„Ç§„Ç∫
 	const int animFrame[4]{ 0, 1, 2, 1 };
 	const float ANIM_INTERVAL = 0.2f;
+
 	const float DegToRad = DX_PI_F / 180;
 
-	const float CHASE_LENGHT = ENEMY_SIZE * 8;
+	const float CHASE_LENGHT = ENEMY_SIZE * 6;
 	const float ATTACK_LENGHT = ENEMY_SIZE * 1;
+
+	const float MAX_SEARCH_TIME = 1.0f;
 }
 
 
 Enemy::Enemy()
 	: GameObject() 
 {
-	hImage_ = LoadGraph("Assets/panda_R.png");
-	pos_ = ENEMY_START_POS; //32ÇÕÉuÉçÉbÉNÇÃà íupos_
-	dir_ = INIT_ENEMY_DIR;
-	target = FindGameObject<Player>();
-
-	currentState = new PatrolState(this);
-	nextState = nullptr;
-	currentStateType = StateType::PATROL;
+	Initialize();
+	SetBehavior();
 }
 
 Enemy::~Enemy()
@@ -43,13 +40,10 @@ void Enemy::Update()
 
 	if (prog_timer < 0.0f)
 	{
-		currentState->Update();
+		distanceToPlayer = CalculateDistance(CalculateToPlayerVec());
+		root.Tick();
 		prog_timer = 0.5f + prog_timer;
 	}
-
-	if (nextState == nullptr)return;
-	currentState = nextState;
-	nextState = nullptr;
 }
 
 void Enemy::Draw()
@@ -57,7 +51,6 @@ void Enemy::Draw()
 	static float animTimer = ANIM_INTERVAL;
 	static int frame = 0;
 	int nowFrame = animFrame[frame];
-
 
 	Rect iRect[4] = {
 		{  nowFrame * ENEMY_SIZE, 3 * ENEMY_SIZE, ENEMY_SIZE, ENEMY_SIZE},
@@ -78,34 +71,10 @@ void Enemy::Draw()
 	DrawStateType();
 }
 
-void Enemy::ChangeState(StateType stateType)
-{
-	if (stateType == currentStateType)return;
-
-	switch (stateType)
-	{
-	case StateType::PATROL:
-		nextState = new PatrolState(this);
-		currentStateType = StateType::PATROL;
-		break;
-	case StateType::CHASE:
-		nextState = new ChaseState(this);
-		currentStateType = StateType::CHASE;
-		break;
-	case StateType::ATTACK:
-		nextState = new AttackState(this);
-		currentStateType = StateType::ATTACK;
-		break;
-	case StateType::SEARCH:
-		nextState = new SearchState(this, target->GetPlayerPos());
-		currentStateType = StateType::SEARCH;
-		break;
-	}
-}
-
 Pointf Enemy::VNormal(Pointf a)
 {
 	float l = sqrtf(a.x * a.x + a.y * a.y);
+	if (l < 0.0001f)return{ 0.0f,0.0f };
 	Pointf ret = { a.x / l,a.y / l };
 	return ret;
 }
@@ -151,12 +120,12 @@ void Enemy::Move()
 	default:
 		break;
 	}
-	//à⁄ìÆêÊÇ™ÉXÉeÅ[ÉWÇÃäOÇ…èoÇ»Ç¢ÇÊÇ§Ç…Ç∑ÇÈ
+	//ÁßªÂãïÂÖà„Åå„Çπ„ÉÜ„Éº„Ç∏„ÅÆÂ§ñ„Å´Âá∫„Å™„ÅÑ„Çà„ÅÜ„Å´„Åô„Çã
 	if (stageData[newPos.y / CHA_SIZE][newPos.x / CHA_SIZE] != 1)
 	{
 		pos_ = newPos;
-		//CSVÇ…ìoò^
-		stageData[newPos.y / CHA_SIZE][newPos.x / CHA_SIZE] = 3;
+		//CSV„Å´ÁôªÈå≤
+		//stageData[newPos.y / CHA_SIZE][newPos.x / CHA_SIZE] = 3;
 	}
 	else
 	{
@@ -180,6 +149,106 @@ void Enemy::Move()
 	}
 }
 
+NodeResult Enemy::Attack()
+{
+	currentStateType = StateType::ATTACK;
+
+	return NodeResult::SUCCESS;
+}
+
+bool Enemy::CanAttack()
+{
+	if (distanceToPlayer <= ATTACK_LENGHT * ATTACK_LENGHT)
+	{
+		return true;
+	}
+	return false;
+}
+
+NodeResult Enemy::Chase()
+{
+	currentStateType = StateType::CHASE;
+
+	Pointf toPlayer = CalculateToPlayerVec();
+	if (abs(toPlayer.x) > abs(toPlayer.y))
+	{
+		if (toPlayer.x < 0)dir_ = LEFT;
+		else if (toPlayer.x > 0)dir_ = RIGHT;
+	}
+	else if (abs(toPlayer.x) < abs(toPlayer.y))
+	{
+		if (toPlayer.y < 0)dir_ = UP;
+		else if (toPlayer.y > 0)dir_ = DOWN;
+	}
+
+	Move();
+	searchTimer = 0.0f;
+	isSearching = true;
+	isAtDestination = false;
+	destination = target->GetPlayerPos();
+	return NodeResult::SUCCESS;
+}
+
+bool Enemy::CanChase()
+{
+	if (distanceToPlayer > CHASE_LENGHT * CHASE_LENGHT)return false;
+
+	Pointf toPlayer = CalculateToPlayerVec();
+	Pointf pNormal = VNormal(toPlayer);
+	Pointf eNormal = VNormal(GetDir());
+	float dot = pNormal.x * eNormal.x + pNormal.y * eNormal.y;
+	if (dot >= cos(60 * DegToRad))
+	{
+		return true;
+	}
+	return false;
+}
+
+NodeResult Enemy::Search()
+{
+	currentStateType = StateType::SEARCH;
+
+	if (!isAtDestination)
+	{
+		Pointf toDestination = { destination.x - pos_.x,destination.y - pos_.y };
+		if (abs(toDestination.x) > abs(toDestination.y))
+		{
+			if (toDestination.x < 0)dir_ = LEFT;
+			else if (toDestination.x > 0)dir_ = RIGHT;
+		}
+		else if (abs(toDestination.x) < abs(toDestination.y))
+		{
+			if (toDestination.y < 0)dir_ = UP;
+			else if (toDestination.y > 0)dir_ = DOWN;
+		}
+
+		Move();
+		if (destination.x == pos_.x && destination.y == pos_.y)isAtDestination = true;
+		return NodeResult::SUCCESS;
+	}
+
+	searchTimer += 0.5f;
+	if (searchTimer >= MAX_SEARCH_TIME)isSearching = false;
+	return NodeResult::SUCCESS;
+
+}
+
+bool Enemy::CanSearch()
+{
+	if (isSearching)
+	{
+		return true;
+	}
+	return false;
+}
+
+NodeResult Enemy::Patrol()
+{
+	Move();
+	currentStateType = StateType::PATROL;
+	return NodeResult::SUCCESS;
+}
+
 void Enemy::DrawStateType()
 {
 	switch (currentStateType)
@@ -199,132 +268,58 @@ void Enemy::DrawStateType()
 	}
 }
 
-PatrolState::PatrolState(Enemy* enemy)
+float Enemy::CalculateDistance(Pointf vec)
 {
-	en = enemy;
+	float dist = vec.x * vec.x + vec.y * vec.y;
+	return dist;
 }
 
-PatrolState::~PatrolState()
+Pointf Enemy::CalculateToPlayerVec()
 {
+	Point pPos = target->GetPlayerPos();
+	Pointf toPlayer = { pPos.x - pos_.x,pPos.y - pos_.y };
+	return toPlayer;
 }
 
-void PatrolState::Update()
+void Enemy::Initialize()
 {
+	hImage_ = LoadGraph("Assets/panda_R.png");
+	pos_ = ENEMY_START_POS; //32„ÅØ„Éñ„É≠„ÉÉ„ÇØ„ÅÆ‰ΩçÁΩÆpos_
+	dir_ = INIT_ENEMY_DIR;
+	target = FindGameObject<Player>();
+	currentStateType = StateType::PATROL;
 
-	en->Move();
-
-	Player* p = en->GetTarget();
-	Point pPos = p->GetPlayerPos();
-	Pointf toPlayer = { pPos.x - en->pos_.x,pPos.y - en->pos_.y };
-	float dist = toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y;
-	if (dist > CHASE_LENGHT * CHASE_LENGHT)return;
-
-	Pointf pNormal = en->VNormal(toPlayer);
-	Pointf eNormal = en->VNormal(en->GetDir());
-	float dot = pNormal.x * eNormal.x + pNormal.y * eNormal.y;
-	if (dot >= cos(60 * DegToRad))
-	{
-		en->ChangeState(StateType::CHASE);
-	}
+	isSearching = false;
+	searchTimer = 0.0f;
+	isAtDestination = false;
+	destination = { 0,0 };
+	distanceToPlayer = 0.0f;
 }
 
-ChaseState::ChaseState(Enemy* enemy)
+void Enemy::SetBehavior()
 {
-	en = enemy;
-}
+	auto attackNode = new ActionNode<Enemy>(this, &Enemy::Attack);
+	auto attackCheckNode = new ConditionNode<Enemy>(this, &Enemy::CanAttack);
+	Sequence* attackSequence = new Sequence();
+	attackSequence->AddChildren(attackCheckNode);
+	attackSequence->AddChildren(attackNode);
 
-ChaseState::~ChaseState()
-{
-}
+	auto chaseNode = new ActionNode<Enemy>(this, &Enemy::Chase);
+	auto chaseCheckNode = new ConditionNode<Enemy>(this, &Enemy::CanChase);
+	Sequence* chaseSequence = new Sequence();
+	chaseSequence->AddChildren(chaseCheckNode);
+	chaseSequence->AddChildren(chaseNode);
 
-void ChaseState::Update()
-{
-	Player* p = en->GetTarget();
-	Point pPos = p->GetPlayerPos();
-	Pointf toPlayer = { pPos.x - en->pos_.x,pPos.y - en->pos_.y };
-	float dist = toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y;
-	if (dist > CHASE_LENGHT * CHASE_LENGHT)
-	{
-		en->ChangeState(StateType::SEARCH);
-		return;
-	}
-	if (dist <= ATTACK_LENGHT * ATTACK_LENGHT)
-	{
-		en->ChangeState(StateType::ATTACK);
-		return;
-	}
-	if (abs(toPlayer.x) > abs(toPlayer.y))
-	{
-		if (toPlayer.x < 0)en->dir_ = LEFT;
-		else if (toPlayer.x > 0)en->dir_ = RIGHT;
-	}
-	else if (abs(toPlayer.x) < abs(toPlayer.y))
-	{
-		if (toPlayer.y < 0)en->dir_ = UP;
-		else if (toPlayer.y > 0)en->dir_ = DOWN;
-	}
+	auto searchNode = new ActionNode<Enemy>(this, &Enemy::Search);
+	auto searchCheckNode = new ConditionNode<Enemy>(this, &Enemy::CanSearch);
+	Sequence* searchSequence = new Sequence();
+	searchSequence->AddChildren(searchCheckNode);
+	searchSequence->AddChildren(searchNode);
 
-	en->Move();
-}
+	auto patrolNode = new ActionNode<Enemy>(this, &Enemy::Patrol);
 
-AttackState::AttackState(Enemy* enemy)
-{
-	en = enemy;
-}
-
-AttackState::~AttackState()
-{
-}
-
-void AttackState::Update()
-{
-	Player* p = en->GetTarget();
-	Point pPos = p->GetPlayerPos();
-	Pointf toPlayer = { pPos.x - en->pos_.x,pPos.y - en->pos_.y };
-	float dist = toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y;
-	if (dist > ATTACK_LENGHT * ATTACK_LENGHT)
-	{
-		en->ChangeState(StateType::CHASE);
-	}
-}
-
-SearchState::SearchState(Enemy* enemy,Point plPos)
-{
-	en = enemy;
-	targetPos = plPos;
-	state = State::SEARCH;
-}
-
-SearchState::~SearchState()
-{
-}
-
-void SearchState::Update()
-{
-	if (state == State::SEARCH)
-	{
-		Pointf toTarget = { targetPos.x - en->pos_.x,targetPos.y - en->pos_.y };
-		float dist = toTarget.x * toTarget.x + toTarget.y * toTarget.y;
-		if (abs(toTarget.x) > abs(toTarget.y))
-		{
-			if (toTarget.x < 0)en->dir_ = LEFT;
-			else if (toTarget.x > 0)en->dir_ = RIGHT;
-		}
-		else if (abs(toTarget.x) < abs(toTarget.y))
-		{
-			if (toTarget.y < 0)en->dir_ = UP;
-			else if (toTarget.y > 0)en->dir_ = DOWN;
-		}
-
-		en->Move();
-
-		if (en->pos_.x == targetPos.x && en->pos_.y == targetPos.y)
-		{
-			state = State::GO;
-		}
-	}
-	else if (state == State::GO)
-	{
-		en->ChangeState(StateType::PATROL);
-	}
+	root.AddChildren(attackSequence);
+	root.AddChildren(chaseSequence);
+	root.AddChildren(searchSequence);
+	root.AddChildren(patrolNode);
 }

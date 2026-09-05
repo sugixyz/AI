@@ -60,6 +60,9 @@
     <ClCompile Include="Stage.cpp">
       <Filter>PlayScene</Filter>
     </ClCompile>
+    <ClCompile Include="Library\BehaviorTree.cpp">
+      <Filter>Library</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Screen.h" />
@@ -131,6 +134,12 @@
     </ClInclude>
     <ClInclude Include="Stage.h">
       <Filter>PlayScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Library\BehaviorTree.h">
+      <Filter>Library</Filter>
+    </ClInclude>
+    <ClInclude Include="Library\Node.h">
+      <Filter>Library</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

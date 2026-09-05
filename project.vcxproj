@@ -149,7 +149,9 @@
     <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Library\App.h" />
+    <ClInclude Include="Library\BehaviorTree.h" />
     <ClInclude Include="Library\GameObject.h" />
+    <ClInclude Include="Library\Node.h" />
     <ClInclude Include="Library\ObjectManager.h" />
     <ClInclude Include="Library\SceneBase.h" />
     <ClInclude Include="Library\SceneManager.h" />
@@ -174,6 +176,7 @@
     <ClCompile Include="ImGui\imgui_widgets.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Library\App.cpp" />
+    <ClCompile Include="Library\BehaviorTree.cpp" />
     <ClCompile Include="Library\main.cpp" />
     <ClCompile Include="Library\ObjectManager.cpp" />
     <ClCompile Include="Library\SceneManager.cpp" />
