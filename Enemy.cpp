@@ -5,6 +5,8 @@
 
 namespace
 {
+	const float EXECUTION_INTERVAL = 0.5f;
+
 	const int ENEMY_SIZE = 48; //敵のサイズ
 	const Point ENEMY_START_POS = { 20 * ENEMY_SIZE, 10 * ENEMY_SIZE }; //敵の初期位置
 	const DIR INIT_ENEMY_DIR = { LEFT };
@@ -34,7 +36,7 @@ Enemy::~Enemy()
 
 void Enemy::Update()
 {
-	static float prog_timer = 0.5f;
+	static float prog_timer = EXECUTION_INTERVAL;
 	float dt = Time::DeltaTime();
 	prog_timer = prog_timer - dt;
 
@@ -42,7 +44,7 @@ void Enemy::Update()
 	{
 		distanceToPlayer = CalculateDistance(CalculateToPlayerVec());
 		root.Tick();
-		prog_timer = 0.5f + prog_timer;
+		prog_timer = EXECUTION_INTERVAL + prog_timer;
 	}
 }
 
@@ -227,7 +229,7 @@ NodeResult Enemy::Search()
 		return NodeResult::SUCCESS;
 	}
 
-	searchTimer += 0.5f;
+	searchTimer += EXECUTION_INTERVAL;
 	if (searchTimer >= MAX_SEARCH_TIME)isSearching = false;
 	return NodeResult::SUCCESS;
 
